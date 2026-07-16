@@ -11,11 +11,28 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - run: |
+      
+      - name: 過去の記録と新しい結果をマージ（合体）する
+        run: |
           mkdir -p results
-          echo '${{ toJson(github.event.client_payload) }}' > "results/${{ github.event.client_payload.user }}.json"
+          USER="${{ github.event.client_payload.user }}"
+          FILE="results/${USER}.json"
+          
+          # 1. 今回送られてきた新しいデータを一時保存
+          echo '${{ toJson(github.event.client_payload) }}' > new_payload.json
+          
+          # 2. 過去のデータがあれば合体、なければそのまま保存
+          if [ -f "$FILE" ]; then
+            # jqの '*' を使って、古いデータに新しいデータを上書きマージする
+            jq -s '.[0] * .[1]' "$FILE" new_payload.json > merged.json
+            mv merged.json "$FILE"
+          else
+            mv new_payload.json "$FILE"
+          fi
+          
+          # 3. GitHubへ反映
           git config user.name "judge-bot"
           git config user.email "actions@github.com"
           git add results/
-          git commit -m "update: ${{ github.event.client_payload.user }}" || echo "no change"
+          git commit -m "update: $USER" || echo "no change"
           git push
