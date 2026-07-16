@@ -178,7 +178,10 @@
     padding: 8px 4px;
     border-bottom: 1px solid var(--border);
   }
-  thead th:first-child { text-align: left; width: 64px; }
+  thead th:first-child { 
+    text-align: left; 
+    width: 140px; /* 64pxから広げて見切れを防ぐ */
+  }
 
   tbody th {
     font-family: var(--mono);
@@ -187,7 +190,8 @@
     text-align: left;
     padding: 6px 10px 6px 2px;
     color: var(--text);
-    white-space: nowrap;
+    white-space: normal; /* 長いタイトルは折り返すようにする */
+    line-height: 1.4;
   }
   tbody th .qnum {
     display: inline-block;
@@ -216,15 +220,23 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 38px;
+    min-height: 48px; /* 文字が複数行になってもいいように高さを柔軟に */
+    height: auto;
+    padding: 6px 8px;
     border-radius: 6px;
     border: 1px solid var(--none-border);
     background: var(--none);
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 700;
+    font-family: var(--sans); /* 日本語が読みやすいフォントに変更 */
+    font-size: 12px;
+    font-weight: 600;
     color: var(--text-muted);
     cursor: default;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .cell.none {
+    border: 1px dashed var(--border);
+    opacity: 0.7;
   }
   .cell.ac { background: var(--ac-dim); border-color: var(--ac); color: var(--ac); }
   .cell.wa { background: var(--wa-dim); border-color: var(--wa); color: var(--wa); }
@@ -416,13 +428,21 @@ async function render(username) {
     const qLabel = p.url
       ? `<a class="qlink" href="${p.url}" target="_blank" rel="noopener">Q${p.id}</a>`
       : `Q${p.id}`;
-    rows += `<tr><th><span class="qnum">${qLabel}</span><span class="qtitle">${p.title || ''}</span></th>`;
+    rows += `<tr><th><span class="qnum">${qLabel}</span><br><span class="qtitle">${p.title || ''}</span></th>`;
+    
     for (const l of LETTERS) {
       const status = results[`Q${p.id}${l}`];
-      const cls = status === 'AC' ? 'ac' : status === 'WA' ? 'wa' : status === 'CE' ? 'ce' : status === 'TLE' ? 'tle' : '';
-      const label = status || '';
-      const title = p.title ? `Q${p.id}${l} — ${p.title}` : `Q${p.id}${l}`;
-      rows += `<td><div class="cell ${cls}" title="${title}">${label}</div></td>`;
+      // statusに応じてクラス名をつける（未提出なら 'none'）
+      const cls = status === 'AC' ? 'ac' : status === 'WA' ? 'wa' : status === 'CE' ? 'ce' : status === 'TLE' ? 'tle' : 'none';
+      
+      // problems.json から A, B, C の名前を取得（無ければそのまま A, B, C と表示）
+      const subTitle = (p.sub && p.sub[l]) ? p.sub[l] : `問題${l}`;
+      
+      // 色だけで判断することになるので、マウスを乗せたときに「AC」などの文字情報も出るようにしておきます
+      const hoverText = `Q${p.id}${l} 状態: ${status || '未提出'}`;
+      
+      // ACなどの文字の代わりに、subTitle（足し算など）をマスの中に入れる
+      rows += `<td><div class="cell ${cls}" title="${hoverText}">${subTitle}</div></td>`;
     }
     rows += '</tr>';
   }
