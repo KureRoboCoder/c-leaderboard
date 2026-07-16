@@ -22,6 +22,8 @@
     --wa-dim: #3a231e;
     --ce: #f2b84f;
     --ce-dim: #3a3220;
+    --tle: #b892f2;
+    --tle-dim: #2b2440;
     --none: #1a1e29;
     --none-border: #262b38;
     --radius: 8px;
@@ -183,10 +185,27 @@
     font-size: 13px;
     font-weight: 600;
     text-align: left;
-    padding: 6px 8px 6px 2px;
+    padding: 6px 10px 6px 2px;
     color: var(--text);
     white-space: nowrap;
   }
+  tbody th .qnum {
+    display: inline-block;
+    min-width: 34px;
+    color: var(--text);
+  }
+  tbody th .qtitle {
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-left: 4px;
+  }
+  tbody th a.qlink {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  tbody th a.qlink:hover { text-decoration: underline; }
 
   td {
     padding: 5px;
@@ -210,6 +229,7 @@
   .cell.ac { background: var(--ac-dim); border-color: var(--ac); color: var(--ac); }
   .cell.wa { background: var(--wa-dim); border-color: var(--wa); color: var(--wa); }
   .cell.ce { background: var(--ce-dim); border-color: var(--ce); color: var(--ce); }
+  .cell.tle { background: var(--tle-dim); border-color: var(--tle); color: var(--tle); }
 
   .table-scroll { overflow-x: auto; }
 
@@ -239,6 +259,7 @@
   .swatch.ac { background: var(--ac); }
   .swatch.wa { background: var(--wa); }
   .swatch.ce { background: var(--ce); }
+  .swatch.tle { background: var(--tle); }
   .swatch.none { background: var(--none); border: 1px solid var(--none-border); }
 
   footer {
@@ -294,6 +315,7 @@
         <span><span class="swatch ac"></span>AC(正解)</span>
         <span><span class="swatch wa"></span>WA(不正解)</span>
         <span><span class="swatch ce"></span>CE(コンパイルエラー)</span>
+        <span><span class="swatch tle"></span>TLE(時間切れ)</span>
         <span><span class="swatch none"></span>未提出</span>
       </div>
     </div>
@@ -389,10 +411,13 @@ async function render(username) {
   let thead = '<tr><th></th>' + LETTERS.map(l => `<th>${l}</th>`).join('') + '</tr>';
   let rows = '';
   for (const p of problems) {
-    rows += `<tr><th>Q${p.id}</th>`;
+    const qLabel = p.url
+      ? `<a class="qlink" href="${p.url}" target="_blank" rel="noopener">Q${p.id}</a>`
+      : `Q${p.id}`;
+    rows += `<tr><th><span class="qnum">${qLabel}</span><span class="qtitle">${p.title || ''}</span></th>`;
     for (const l of LETTERS) {
       const status = results[`Q${p.id}${l}`];
-      const cls = status === 'AC' ? 'ac' : status === 'WA' ? 'wa' : status === 'CE' ? 'ce' : '';
+      const cls = status === 'AC' ? 'ac' : status === 'WA' ? 'wa' : status === 'CE' ? 'ce' : status === 'TLE' ? 'tle' : '';
       const label = status || '';
       const title = p.title ? `Q${p.id}${l} — ${p.title}` : `Q${p.id}${l}`;
       rows += `<td><div class="cell ${cls}" title="${title}">${label}</div></td>`;
