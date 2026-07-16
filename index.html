@@ -374,10 +374,12 @@ async function render(username) {
     return;
   }
 
+  let data = {};
   let results = {};
   let hasResultFile = true;
   try {
-    results = await loadJSON(`results/${encodeURIComponent(username)}.json`).results;
+    data = await loadJSON(`results/${encodeURIComponent(username)}.json`);
+    results = data.results;
   } catch (e) {
     hasResultFile = false;
   }
