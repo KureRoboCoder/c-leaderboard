@@ -24,6 +24,8 @@
     --ce-dim: #3a3220;
     --tle: #b892f2;
     --tle-dim: #2b2440;
+    --re: #6cd4e0;       /* ← 追加：RE用の色 */
+    --re-dim: #1c332f;   /* ← 追加：RE用の背景色 */
     --none: #1a1e29;
     --none-border: #262b38;
     --radius: 8px;
@@ -242,6 +244,7 @@
   .cell.wa { background: var(--wa-dim); border-color: var(--wa); color: var(--wa); }
   .cell.ce { background: var(--ce-dim); border-color: var(--ce); color: var(--ce); }
   .cell.tle { background: var(--tle-dim); border-color: var(--tle); color: var(--tle); }
+  .cell.re { background: var(--re-dim); border-color: var(--re); color: var(--re); }
 
   .table-scroll { overflow-x: auto; }
 
@@ -272,6 +275,7 @@
   .swatch.wa { background: var(--wa); }
   .swatch.ce { background: var(--ce); }
   .swatch.tle { background: var(--tle); }
+  .swatch.re { background: var(--re); }
   .swatch.none { background: var(--none); border: 1px solid var(--none-border); }
 
   footer {
@@ -328,6 +332,7 @@
         <span><span class="swatch wa"></span>WA(不正解)</span>
         <span><span class="swatch ce"></span>CE(コンパイルエラー)</span>
         <span><span class="swatch tle"></span>TLE(時間切れ)</span>
+        <span><span class="swatch re"></span>RE(実行時エラー)</span>
         <span><span class="swatch none"></span>未提出</span>
       </div>
     </div>
@@ -433,7 +438,7 @@ async function render(username) {
     for (const l of LETTERS) {
       const status = results[`Q${p.id}${l}`];
       // statusに応じてクラス名をつける（未提出なら 'none'）
-      const cls = status === 'AC' ? 'ac' : status === 'WA' ? 'wa' : status === 'CE' ? 'ce' : status === 'TLE' ? 'tle' : 'none';
+      const cls = status === 'AC' ? 'ac' : status === 'WA' ? 'wa' : status === 'CE' ? 'ce' : status === 'TLE' ? 'tle' : status === 'RE' ? 're' : 'none';
       
       // problems.json から A, B, C の名前を取得（無ければそのまま A, B, C と表示）
       const subTitle = (p.sub && p.sub[l]) ? p.sub[l] : `問題${l}`;
