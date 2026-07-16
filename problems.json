@@ -16,6 +16,20 @@
     },
     {
       "id": 2,
+      "title": "puls minus times divide",
+      "sub": {
+        "A": "2x + 1 =",
+        "B": "x / 3 =",
+        "C": "Many Common Divisors"
+      },
+      "urls": {
+        "A": "https://github.com/KureRoboCoder/c-problems/blob/main/Q2/Q2A.md",
+        "B": "https://github.com/KureRoboCoder/c-problems/blob/main/Q2/Q2B.md",
+        "C": "https://github.com/KureRoboCoder/c-problems/blob/main/Q2/Q2C.md"
+      }
+    },
+    {
+      "id": 3,
       "title": "repating repeat",
       "sub": {
         "A": "dynamite",
@@ -24,7 +38,7 @@
       }
     },
     {
-      "id": 3,
+      "id": 4,
       "title": "IF ELSE ALSO ELSE IF",
       "sub": {
         "A": "Atoha Notonare Yamatonare",
@@ -33,7 +47,7 @@
       }
     },
     {
-      "id": 4,
+      "id": 5,
       "title": "Let's try anyway!",
       "sub": {
         "A": "hot cream",
@@ -42,7 +56,7 @@
       }
     },
     {
-      "id": 5,
+      "id": 6,
       "title": "でもよ、じっちゃん、いらないんだ",
       "sub": {
         "A": "研究対象 XY",
@@ -51,7 +65,7 @@
       }
     },
     {
-      "id": 6,
+      "id": 7,
       "title": "全部調べるのもまた一興",
       "sub": {
         "A": "鳩さんぽ",
@@ -60,7 +74,7 @@
       }
     },
     {
-      "id": 7,
+      "id": 8,
       "title": "文字列だって変数さ",
       "sub": {
         "A": "夏休みの一行日記",
@@ -69,7 +83,7 @@
       }
     },
     {
-      "id": 8,
+      "id": 9,
       "title": "2進数ってしってるかい？",
       "sub": {
         "A": "トグルスイッチ",
@@ -78,7 +92,7 @@
       }
     },
     {
-      "id": 9,
+      "id": 10,
       "title": "ビット演算をしっておこう",
       "sub": {
         "A": "NOT AND is not NOT OR",
@@ -87,7 +101,7 @@
       }
     },
     {
-      "id": 10,
+      "id": 11,
       "title": "チャレンジロード1",
       "sub": {
         "A": "Answer my question (2次方程式)",
@@ -96,7 +110,7 @@
       }
     },
     {
-      "id": 11,
+      "id": 12,
       "title": "チャレンジロード2",
       "sub": {
         "A": "Toggle buttons",
@@ -105,7 +119,7 @@
       }
     },
     {
-      "id": 12,
+      "id": 13,
       "title": "LAST ELIXIR",
       "sub": {
         "A": "鳩さんの復讐",
