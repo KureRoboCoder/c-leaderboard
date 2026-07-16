@@ -1,0 +1,21 @@
+# receive.yml
+name: Receive Result
+on:
+  repository_dispatch:
+    types: [submit]
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p results
+          echo '${{ toJson(github.event.client_payload) }}' > "results/${{ github.event.client_payload.user }}.json"
+          git config user.name "judge-bot"
+          git config user.email "actions@github.com"
+          git add results/
+          git commit -m "update: ${{ github.event.client_payload.user }}" || echo "no change"
+          git push
