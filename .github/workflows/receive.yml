@@ -35,4 +35,5 @@ jobs:
           git config user.email "actions@github.com"
           git add results/
           git commit -m "update: $USER" || echo "no change"
+          git pull --rebase
           git push
