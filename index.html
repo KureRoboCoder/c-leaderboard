@@ -377,7 +377,7 @@ async function render(username) {
   let results = {};
   let hasResultFile = true;
   try {
-    results = await loadJSON(`results/${encodeURIComponent(username)}.json`);
+    results = await loadJSON(`results/${encodeURIComponent(username)}.json`).results;
   } catch (e) {
     hasResultFile = false;
   }
