@@ -11,38 +11,101 @@
     },
     {
       "id": 2,
-      "title": "Let's try anyway",
+      "title": "repating repeat",
+      "sub": {
+        "A": "dynamite",
+        "B": "pair is LUCKY",
+        "C": "times"
+      }
+    },
+    {
+      "id": 3,
+      "title": "IF ELSE ALSO ELSE IF",
       "sub": {
         "A": "Atoha Notonare Yamatonare",
+        "B": "ice cream",
+        "C": "GROUP 7"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Let's try anyway!",
+      "sub": {
+        "A": "hot cream",
         "B": "Mountain",
         "C": "Bunny hop"
       }
     },
     {
-      "id": 3,
-      "title": "でもよ、じっちゃん、必要じゃない情報があるんだ",
+      "id": 5,
+      "title": "でもよ、じっちゃん、いらないんだ",
       "sub": {
         "A": "研究対象 XY",
         "B": "リボルバー・ミー",
-        "C": "アキジ・ライナー・エクスプレス"
+        "C": "アキジ・ライナ・エクスプレス"
       }
     },
     {
-      "id": 4,
-      "title": "頭を使いたくないなら、全部やればいいじゃない",
+      "id": 6,
+      "title": "全部調べるのもまた一興",
       "sub": {
         "A": "鳩さんぽ",
         "B": "鳩さんぽっぽ",
-        "C": "鳩さんパニック"
+        "C": "鳩さんパニック！"
       }
     },
     {
-      "id": 5,
+      "id": 7,
       "title": "文字列だって変数さ",
       "sub": {
         "A": "夏休みの一行日記",
         "B": "せかせかせんといて",
         "C": "トマトとマトとイマとイント"
+      }
+    },
+    {
+      "id": 8,
+      "title": "2進数ってしってるかい？",
+      "sub": {
+        "A": "トグルスイッチ",
+        "B": "111",
+        "C": "10101"
+      }
+    },
+    {
+      "id": 9,
+      "title": "ビット演算をしっておこう",
+      "sub": {
+        "A": "NOT AND is not NOT OR",
+        "B": "パタパタパニック！",
+        "C": "かっこつけた()"
+      }
+    },
+    {
+      "id": 10,
+      "title": "チャレンジロード1",
+      "sub": {
+        "A": "Answer my question (2次方程式)",
+        "B": "Bunny hop2",
+        "C": "COBS ENCODE"
+      }
+    },
+    {
+      "id": 11,
+      "title": "チャレンジロード2",
+      "sub": {
+        "A": "Toggle buttons",
+        "B": "CHECK SUM",
+        "C": "COBS DECODE"
+      }
+    },
+    {
+      "id": 12,
+      "title": "LAST ELIXIR",
+      "sub": {
+        "A": "鳩さんの復讐",
+        "B": "アキジ・ツウキン・エクスプレス",
+        "C": "ここからはあなたに"
       }
     }
   ]
