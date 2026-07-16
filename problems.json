@@ -7,6 +7,11 @@
         "A": "Can you push?",
         "B": "Hello and you",
         "C": "Kure dormitory advisor"
+      },
+      "urls": {
+        "A": "https://github.com/KureRoboCoder/c-problems/Q1/Q1A.md",
+        "B": "https://github.com/KureRoboCoder/c-problems/Q1/Q1B.md",
+        "C": "https://github.com/KureRoboCoder/c-problems/Q1/Q1C.md"
       }
     },
     {

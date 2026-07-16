@@ -246,6 +246,16 @@
   .cell.tle { background: var(--tle-dim); border-color: var(--tle); color: var(--tle); }
   .cell.re { background: var(--re-dim); border-color: var(--re); color: var(--re); }
 
+  a.cell {
+    text-decoration: none; /* 下線を消す */
+    cursor: pointer;       /* マウスカーソルを指のマークにする */
+    transition: filter 0.15s ease;
+  }
+  
+  a.cell:hover {
+    filter: brightness(1.25); /* マウスを乗せると少し明るく光る */
+  }
+
   .table-scroll { overflow-x: auto; }
 
   /* --- empty / error states --- */
@@ -446,8 +456,16 @@ async function render(username) {
       // 色だけで判断することになるので、マウスを乗せたときに「AC」などの文字情報も出るようにしておきます
       const hoverText = `Q${p.id}${l} 状態: ${status || '未提出'}`;
       
-      // ACなどの文字の代わりに、subTitle（足し算など）をマスの中に入れる
-      rows += `<td><div class="cell ${cls}" title="${hoverText}">${subTitle}</div></td>`;
+      // problems.json からこの小問(A, B, C...)のURLを取得
+      const cellUrl = (p.urls && p.urls[l]) ? p.urls[l] : null;
+      
+      if (cellUrl) {
+        // URLが設定されている場合は <a> タグにする
+        rows += `<td><a href="${cellUrl}" target="_blank" rel="noopener" class="cell ${cls}" title="${hoverText}">${subTitle}</a></td>`;
+      } else {
+        // URLが設定されていない場合は今まで通り <div> タグにする
+        rows += `<td><div class="cell ${cls}" title="${hoverText}">${subTitle}</div></td>`;
+      }
     }
     rows += '</tr>';
   }
