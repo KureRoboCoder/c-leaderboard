@@ -390,7 +390,14 @@ async function render(username) {
   let results = {};
   let hasResultFile = true;
   try {
-    data = await loadJSON(`results/${encodeURIComponent(username)}.json`);
+    // アクセスするたびに変わる数字(現在時刻のミリ秒)を作ります
+    const timestamp = new Date().getTime();
+    
+    // GitHub PagesのURLではなく、GitHubリポジトリの「Raw(生データ)」URLから直接取得する
+    // 末尾に ?t=数字 をつけることで、ブラウザやサーバーのキャッシュ(古いデータの使い回し)を強制的に防ぎます
+    const rawUrl = `https://raw.githubusercontent.com/KureRoboCoder/c-leaderboard/main/results/${encodeURIComponent(username)}.json?t=${timestamp}`;
+    
+    data = await loadJSON(rawUrl);
     results = data.results;
   } catch (e) {
     hasResultFile = false;
