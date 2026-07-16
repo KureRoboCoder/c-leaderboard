@@ -2,6 +2,15 @@
   "problems": [
     {
       "id": 1,
+      "title": "Hello KureRoboCoder!",
+      "sub": {
+        "A": "Can you push?",
+        "B": "Maximam",
+        "C": "dormitory advisor"
+      }
+    },
+    {
+      "id": 2,
       "title": "四則演算",
       "sub": {
         "A": "足し算",
@@ -10,7 +19,7 @@
       }
     },
     {
-      "id": 2,
+      "id": 3,
       "title": "配列",
       "sub": {
         "A": "配列の合計",
