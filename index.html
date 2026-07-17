@@ -350,15 +350,11 @@
   <footer>results/&lt;user&gt;.json を problems.json の定義に沿って描画しています</footer>
 </div>
 
-<script>
-// Import the functions you need from the SDKs you need
-// import { initializeApp } from "firebase/app";
+<script type="module">
+// FirebaseのSDKを読み込む
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBsXARsE11iT0MlOWAMCnbQ_55Cue70E7c",
   authDomain: "kure-robocoder-judge.firebaseapp.com",
@@ -368,18 +364,19 @@ const firebaseConfig = {
   appId: "1:1095164502350:web:f1e0c63f93a99989f4be1f"
 };
 
-// Initialize Firebase
+// Firebaseの初期化
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// 画面要素の取得
 const $ = (sel) => document.querySelector(sel);
 const userInput = $('#userInput');
 const promptUser = $('#promptUser');
 const content = $('#content');
 const statsArea = $('#statsArea');
-
 const LETTERS = ['A', 'B', 'C'];
 
+// URLやローカルストレージから前回のユーザー名を取得
 function getInitialUser() {
   const params = new URLSearchParams(location.search);
   const fromUrl = params.get('user');
@@ -387,19 +384,23 @@ function getInitialUser() {
   return localStorage.getItem('cjudge_username') || '';
 }
 
+// メッセージ表示用関数
 function setNotice(html) {
   content.innerHTML = `<p class="notice">${html}</p>`;
   statsArea.innerHTML = '';
 }
 
+// JSON読み込み用関数 (問題一覧を取得するために使用)
 async function loadJSON(path) {
-  const res = await fetch(path, { cache: 'no-store' });
+  const timestamp = new Date().getTime();
+  const res = await fetch(`${path}?t=${timestamp}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(String(res.status));
   return res.json();
 }
 
-let unsubscribe = null;
+let unsubscribe = null; // リアルタイム監視を解除するための変数
 
+// 画面の描画処理
 async function render(username) {
   username = username.trim();
   promptUser.textContent = username || '(未入力)';
@@ -408,7 +409,8 @@ async function render(username) {
     setNotice('ユーザー名を入力して「表示」を押してください。');
     return;
   }
-  // URLなどの更新処理（既存のまま）
+
+  // URLを更新
   localStorage.setItem('cjudge_username', username);
   const url = new URL(location.href);
   url.searchParams.set('user', username);
@@ -416,99 +418,96 @@ async function render(username) {
 
   setNotice('読み込み中...');
 
+  // 問題一覧(problems.json)を読み込む
   let problems;
   try {
     problems = (await loadJSON('problems.json')).problems;
   } catch (e) {
-    setNotice('<strong>問題一覧が読み込めませんでした。</strong>');
+    setNotice('<strong>問題一覧(problems.json)が読み込めませんでした。</strong><br>リポジトリ直下に problems.json が置かれているか確認してください。');
     return;
   }
 
-  // もし前のユーザーを監視中なら解除する
+  // もし前のユーザーを監視中なら一度解除する
   if (unsubscribe) unsubscribe();
 
-  // ★ここが最大の変更点：Firestoreからデータをリアルタイムで監視(onSnapshot)する
+  // Firestoreからユーザーの成績データをリアルタイム監視
   const userRef = doc(db, "users", username);
   
   unsubscribe = onSnapshot(userRef, (docSnap) => {
     if (!docSnap.exists()) {
-      setNotice(`<strong>${username}</strong> さんの提出記録がまだ見つかりません。`);
+      setNotice(`<strong>${username}</strong> さんの提出記録がまだ見つかりません。<br>提出してジャッジが完了すると、自動でここに反映されます。`);
       return;
     }
 
-  const data = docSnap.data();
-  const results = data.results || {};
+    const data = docSnap.data();
+    const results = data.results || {};
 
-  // --- 集計 ---
-  let acCount = 0;
-  let attemptedCount = 0;
-  const total = problems.length * LETTERS.length;
-  for (const p of problems) {
-    for (const l of LETTERS) {
-      const status = results[`Q${p.id}${l}`];
-      if (status) attemptedCount++;
-      if (status === 'AC') acCount++;
-    }
-  }
-
-  statsArea.innerHTML = `
-    <div class="stats">
-      <div class="stat"><div class="n ac-text">${acCount} / ${total}</div><div class="l">AC 数</div></div>
-      <div class="stat"><div class="n">${attemptedCount}</div><div class="l">挑戦した問題数</div></div>
-      <div class="stat"><div class="n">${total ? Math.round((acCount / total) * 100) : 0}%</div><div class="l">正答率</div></div>
-    </div>
-  `;
-
-  // --- 表描画 ---
-  let thead = '<tr><th></th>' + LETTERS.map(l => `<th>${l}</th>`).join('') + '</tr>';
-  let rows = '';
-  for (const p of problems) {
-    const qLabel = p.url
-      ? `<a class="qlink" href="${p.url}" target="_blank" rel="noopener">Q${p.id}</a>`
-      : `Q${p.id}`;
-    rows += `<tr><th><span class="qnum">${qLabel}</span><br><span class="qtitle">${p.title || ''}</span></th>`;
-    
-    for (const l of LETTERS) {
-      const status = results[`Q${p.id}${l}`];
-      // statusに応じてクラス名をつける（未提出なら 'none'）
-      const cls = status === 'AC' ? 'ac' : status === 'WA' ? 'wa' : status === 'CE' ? 'ce' : status === 'TLE' ? 'tle' : status === 'RE' ? 're' : 'none';
-      
-      // problems.json から A, B, C の名前を取得（無ければそのまま A, B, C と表示）
-      const subTitle = (p.sub && p.sub[l]) ? p.sub[l] : `問題${l}`;
-      
-      // 色だけで判断することになるので、マウスを乗せたときに「AC」などの文字情報も出るようにしておきます
-      const hoverText = `Q${p.id}${l} 状態: ${status || '未提出'}`;
-      
-      // problems.json からこの小問(A, B, C...)のURLを取得
-      const cellUrl = (p.urls && p.urls[l]) ? p.urls[l] : null;
-      
-      if (cellUrl) {
-        // URLが設定されている場合は <a> タグにする
-        rows += `<td><a href="${cellUrl}" target="_blank" rel="noopener" class="cell ${cls}" title="${hoverText}">${subTitle}</a></td>`;
-      } else {
-        // URLが設定されていない場合は今まで通り <div> タグにする
-        rows += `<td><div class="cell ${cls}" title="${hoverText}">${subTitle}</div></td>`;
+    // --- 集計 ---
+    let acCount = 0;
+    let attemptedCount = 0;
+    const total = problems.length * LETTERS.length;
+    for (const p of problems) {
+      for (const l of LETTERS) {
+        const status = results[`Q${p.id}${l}`];
+        if (status) attemptedCount++;
+        if (status === 'AC') acCount++;
       }
     }
-    rows += '</tr>';
-  }
 
-  content.innerHTML = `
-    <div class="table-scroll">
-      <table>
-        <thead>${thead}</thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
+    statsArea.innerHTML = `
+      <div class="stats">
+        <div class="stat"><div class="n ac-text">${acCount} / ${total}</div><div class="l">AC 数</div></div>
+        <div class="stat"><div class="n">${attemptedCount}</div><div class="l">挑戦した問題数</div></div>
+        <div class="stat"><div class="n">${total ? Math.round((acCount / total) * 100) : 0}%</div><div class="l">正答率</div></div>
+      </div>
+    `;
+
+    // --- 表描画 ---
+    let thead = '<tr><th></th>' + LETTERS.map(l => `<th>${l}</th>`).join('') + '</tr>';
+    let rows = '';
+    for (const p of problems) {
+      const qLabel = p.url
+        ? `<a class="qlink" href="${p.url}" target="_blank" rel="noopener">Q${p.id}</a>`
+        : `Q${p.id}`;
+      rows += `<tr><th><span class="qnum">${qLabel}</span><br><span class="qtitle">${p.title || ''}</span></th>`;
+      
+      for (const l of LETTERS) {
+        const status = results[`Q${p.id}${l}`];
+        // REも含めたステータス判定
+        const cls = status === 'AC' ? 'ac' : status === 'WA' ? 'wa' : status === 'CE' ? 'ce' : status === 'TLE' ? 'tle' : status === 'RE' ? 're' : 'none';
+        
+        const subTitle = (p.sub && p.sub[l]) ? p.sub[l] : `問題${l}`;
+        const hoverText = `Q${p.id}${l} 状態: ${status || '未提出'}`;
+        const cellUrl = (p.urls && p.urls[l]) ? p.urls[l] : null;
+        
+        if (cellUrl) {
+          // URLがある場合はリンクにする
+          rows += `<td><a href="${cellUrl}" target="_blank" rel="noopener" class="cell ${cls}" title="${hoverText}">${subTitle}</a></td>`;
+        } else {
+          rows += `<td><div class="cell ${cls}" title="${hoverText}">${subTitle}</div></td>`;
+        }
+      }
+      rows += '</tr>';
+    }
+
+    content.innerHTML = `
+      <div class="table-scroll">
+        <table>
+          <thead>${thead}</thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
   });
 }
 
+// イベント登録
 $('#loadBtn').addEventListener('click', () => render(userInput.value));
 userInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') render(userInput.value);
 });
 
+// 初期表示
 const initial = getInitialUser();
 if (initial) {
   userInput.value = initial;
