@@ -1,0 +1,115 @@
+name: Remote Judge
+
+on:
+  repository_dispatch:
+    types: [submit]
+
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 提出された最新のコードを取り寄せる (Public / Private どちらでも可)
+      - name: Checkout User Code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.client_payload.repo }}
+          ref: ${{ github.event.client_payload.sha }}
+          path: user_code
+
+      # 2. テストデータを取り寄せる (Privateリポジトリなので合鍵を使う)
+      - name: Checkout Test Data
+        uses: actions/checkout@v4
+        with:
+          repository: KureRoboCoder/c-testdata
+          token: ${{ secrets.TESTDATA_TOKEN }}
+          path: testdata
+
+      # 3. Firebase環境の準備
+      - name: Setup Firebase Admin
+        run: npm install firebase-admin --no-save
+
+      # 4. コンパイル＆採点
+      - name: Compile and Judge (C++)
+        id: judge
+        run: |
+          echo "{}" > payload.json
+          RESULTS="{}"
+          
+          # answersフォルダ内の .cpp ファイルを一つずつ探す
+          for src in user_code/answers/*.cpp; do
+            [ -e "$src" ] || continue
+            filename=$(basename "$src" .cpp) # Q1A, Q2B などの名前を取得
+            
+            testdir="testdata/$filename"
+            if [ ! -d "$testdir" ]; then
+              continue # テストデータがなければスキップ
+            fi
+            
+            # C++ のコンパイル
+            if ! g++ -O2 -Wall "$src" -o /tmp/prog; then
+              RESULTS=$(jq --arg k "$filename" --arg v "CE" '.[$k] = $v' <<< "$RESULTS")
+              continue
+            fi
+            
+            pass=0; total=0; tle=0; re=0
+            for infile in "$testdir"/*.in; do
+              [ -e "$infile" ] || continue
+              total=$((total+1))
+              expected_file="${infile%.in}.out"
+              
+              status=0
+              timeout 3 /tmp/prog < "$infile" > /tmp/actual.out || status=$?
+              
+              if [ "$status" -eq 124 ]; then
+                tle=$((tle+1))
+                continue
+              elif [ "$status" -ne 0 ]; then
+                re=$((re+1))
+                continue
+              fi
+              
+              # AtCoder風のゆるい判定 (空白・改行無視)
+              if diff -w "$expected_file" /tmp/actual.out > /dev/null; then
+                pass=$((pass+1))
+              fi
+            done
+            
+            if [ "$total" -eq 0 ]; then continue; fi
+            
+            if [ "$pass" -eq "$total" ]; then
+              res="AC"
+            elif [ "$tle" -gt 0 ]; then
+              res="TLE"
+            elif [ "$re" -gt 0 ]; then
+              res="RE"
+            else
+              res="WA"
+            fi
+            
+            RESULTS=$(jq --arg k "$filename" --arg v "$res" '.[$k] = $v' <<< "$RESULTS")
+          done
+          
+          echo "$RESULTS" > payload.json
+
+      # 5. Firebaseへ直接結果を送信
+      - name: Update Firebase
+        uses: actions/github-script@v7
+        env:
+          FIREBASE_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_NAME: ${{ github.event.client_payload.user }}
+        with:
+          script: |
+            const admin = require('firebase-admin');
+            const fs = require('fs');
+            
+            const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
+            if (!admin.apps.length) {
+              admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+            }
+            
+            const results = JSON.parse(fs.readFileSync('payload.json', 'utf8'));
+            
+            await admin.firestore().collection('users').doc(process.env.USER_NAME).set({
+              results: results,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
