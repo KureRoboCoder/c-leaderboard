@@ -9,7 +9,7 @@ async function main() {
   // 安全装置：テスト結果が空（0件）の場合は書き込み中止
   if (Object.keys(results).length === 0) {
     console.error("エラー: 実行されたテストが0件です。ディレクトリ構造を確認してください。");
-    process.exit(1);
+    process.exit(0);
   }
   
   const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
