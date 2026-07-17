@@ -8,6 +8,10 @@ jobs:
   judge:
     runs-on: ubuntu-latest
     steps:
+      # 0. まず自分自身（c-leaderboard）のコードを取り寄せる (scripts/dist/index.js を取得するため)
+      - name: Checkout Current Repo
+        uses: actions/checkout@v4
+        
       # 1. 提出された最新のコードを取り寄せる
       - name: Checkout User Code
         uses: actions/checkout@v4
