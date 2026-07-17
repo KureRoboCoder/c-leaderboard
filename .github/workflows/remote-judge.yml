@@ -99,17 +99,24 @@ jobs:
           USER_NAME: ${{ github.event.client_payload.user }}
         with:
           script: |
-            const admin = require('firebase-admin');
+            // 最新のモジュラーAPIによる読み込み方に変更
+            const { initializeApp, getApps, cert } = require('firebase-admin/app');
+            const { getFirestore, FieldValue } = require('firebase-admin/firestore');
             const fs = require('fs');
             
+            // 環境変数から鍵を読み込む
             const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
-            if (!admin.apps.length) {
-              admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+            
+            // 起動チェックの書き方を getApps().length に変更
+            if (getApps().length === 0) {
+              initializeApp({ credential: cert(serviceAccount) });
             }
             
+            const db = getFirestore();
             const results = JSON.parse(fs.readFileSync('payload.json', 'utf8'));
             
-            await admin.firestore().collection('users').doc(process.env.USER_NAME).set({
+            // Firebaseへ書き込み (FieldValue.serverTimestamp()の書き方も変更)
+            await db.collection('users').doc(process.env.USER_NAME).set({
               results: results,
-              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+              updatedAt: FieldValue.serverTimestamp()
             }, { merge: true });
