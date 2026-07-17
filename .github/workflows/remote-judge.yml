@@ -1,8 +1,17 @@
 name: Remote Judge
 
 on:
-  repository_dispatch:
-    types: [submit]
+  workflow_dispatch:
+    inputs:
+      user:
+        required: true
+        type: string
+      repo:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
 
 jobs:
   judge:
@@ -12,14 +21,13 @@ jobs:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
         
-      # 1. 提出された最新のコードを取り寄せる
+      # inputs.xxx という形で受け取るように変更
       - name: Checkout User Code
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.event.client_payload.repo }}
-          ref: ${{ github.event.client_payload.sha }}
+          repository: ${{ inputs.repo }}
+          ref: ${{ inputs.sha }}
           path: user_code
-          # ※後輩のリポジトリがPrivateの場合、アクセス権がないと失敗するため合鍵を使います
           token: ${{ secrets.TESTDATA_TOKEN }}
 
       # 2. テストデータを取り寄せる (Privateリポジトリなので合鍵を使う)
@@ -105,9 +113,9 @@ jobs:
           
           echo "$RESULTS" > payload.json
 
-      # 5. Firebaseへ直接結果を送信 (コンパイル済みのJSを直接実行)
+      # 最後のFirebase送信部分も inputs.user に変更
       - name: Update Firebase
         env:
           FIREBASE_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          USER_NAME: ${{ github.event.client_payload.user }}
+          USER_NAME: ${{ inputs.user }}
         run: node scripts/dist/index.js
