@@ -351,6 +351,27 @@
 </div>
 
 <script>
+// Import the functions you need from the SDKs you need
+// import { initializeApp } from "firebase/app";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBsXARsE11iT0MlOWAMCnbQ_55Cue70E7c",
+  authDomain: "kure-robocoder-judge.firebaseapp.com",
+  projectId: "kure-robocoder-judge",
+  storageBucket: "kure-robocoder-judge.firebasestorage.app",
+  messagingSenderId: "1095164502350",
+  appId: "1:1095164502350:web:f1e0c63f93a99989f4be1f"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 const $ = (sel) => document.querySelector(sel);
 const userInput = $('#userInput');
 const promptUser = $('#promptUser');
@@ -377,6 +398,8 @@ async function loadJSON(path) {
   return res.json();
 }
 
+let unsubscribe = null;
+
 async function render(username) {
   username = username.trim();
   promptUser.textContent = username || '(未入力)';
@@ -385,7 +408,7 @@ async function render(username) {
     setNotice('ユーザー名を入力して「表示」を押してください。');
     return;
   }
-
+  // URLなどの更新処理（既存のまま）
   localStorage.setItem('cjudge_username', username);
   const url = new URL(location.href);
   url.searchParams.set('user', username);
@@ -397,24 +420,24 @@ async function render(username) {
   try {
     problems = (await loadJSON('problems.json')).problems;
   } catch (e) {
-    setNotice('<strong>問題一覧(problems.json)が読み込めませんでした。</strong><br>リポジトリ直下に problems.json が置かれているか確認してください。');
+    setNotice('<strong>問題一覧が読み込めませんでした。</strong>');
     return;
   }
 
-  let data = {};
-  let results = {};
-  let hasResultFile = true;
-  try {
-    data = await loadJSON(`results/${encodeURIComponent(username)}.json`);
-    results = data.results;
-  } catch (e) {
-    hasResultFile = false;
-  }
+  // もし前のユーザーを監視中なら解除する
+  if (unsubscribe) unsubscribe();
 
-  if (!hasResultFile) {
-    setNotice(`<strong>${username}</strong> さんの提出記録がまだ見つかりません。<br>提出用リポジトリで一度でも push すると、ここに反映されます。`);
-    return;
-  }
+  // ★ここが最大の変更点：Firestoreからデータをリアルタイムで監視(onSnapshot)する
+  const userRef = doc(db, "users", username);
+  
+  unsubscribe = onSnapshot(userRef, (docSnap) => {
+    if (!docSnap.exists()) {
+      setNotice(`<strong>${username}</strong> さんの提出記録がまだ見つかりません。`);
+      return;
+    }
+
+  const data = docSnap.data();
+  const results = data.results || {};
 
   // --- 集計 ---
   let acCount = 0;
@@ -478,6 +501,7 @@ async function render(username) {
       </table>
     </div>
   `;
+  });
 }
 
 $('#loadBtn').addEventListener('click', () => render(userInput.value));

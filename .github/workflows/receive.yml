@@ -1,39 +1,41 @@
-# receive.yml
 name: Receive Result
 on:
   repository_dispatch:
     types: [submit]
 
 jobs:
-  update:
+  update-firebase:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: 過去の記録と新しい結果をマージ（合体）する
-        run: |
-          mkdir -p results
-          USER="${{ github.event.client_payload.user }}"
-          FILE="results/${USER}.json"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
           
-          # 1. 今回送られてきた新しいデータを一時保存
-          echo '${{ toJson(github.event.client_payload) }}' > new_payload.json
-          
-          # 2. 過去のデータがあれば合体、なければそのまま保存
-          if [ -f "$FILE" ]; then
-            # jqの '*' を使って、古いデータに新しいデータを上書きマージする
-            jq -s '.[0] * .[1]' "$FILE" new_payload.json > merged.json
-            mv merged.json "$FILE"
-          else
-            mv new_payload.json "$FILE"
-          fi
-          
-          # 3. GitHubへ反映
-          git config user.name "judge-bot"
-          git config user.email "actions@github.com"
-          git add results/
-          git commit -m "update: $USER" || echo "no change"
-          git pull --rebase
-          git push
+      - name: Install Firebase Admin SDK
+        run: npm install firebase-admin
+        
+      - name: Update Firestore
+        uses: actions/github-script@v7
+        env:
+          FIREBASE_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        with:
+          script: |
+            const admin = require('firebase-admin');
+            
+            // 環境変数から鍵とデータを読み込む
+            const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
+            const payload = JSON.parse(process.env.PAYLOAD);
+            
+            if (!admin.apps.length) {
+              admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+            }
+            const db = admin.firestore();
+            
+            // usersコレクションの 'ユーザー名' ドキュメントに成績を書き込む
+            // { merge: true } をつけることで、過去の成績を消さずに新しいものだけを上書き・追加してくれます
+            await db.collection('users').doc(payload.user).set({
+              results: payload.results,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
