@@ -30,10 +30,6 @@ jobs:
           token: ${{ secrets.TESTDATA_TOKEN }}
           path: testdata
 
-      # 3. Firebase環境の準備
-      - name: Setup Firebase Admin
-        run: npm install firebase-admin --no-save
-
       # 4. コンパイル＆採点
       - name: Compile and Judge (C++)
         id: judge
