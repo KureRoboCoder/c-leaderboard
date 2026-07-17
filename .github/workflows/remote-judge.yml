@@ -8,19 +8,21 @@ jobs:
   judge:
     runs-on: ubuntu-latest
     steps:
-      # 1. 提出された最新のコードを取り寄せる (Public / Private どちらでも可)
+      # 1. 提出された最新のコードを取り寄せる
       - name: Checkout User Code
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.client_payload.repo }}
           ref: ${{ github.event.client_payload.sha }}
           path: user_code
+          # ※後輩のリポジトリがPrivateの場合、アクセス権がないと失敗するため合鍵を使います
+          token: ${{ secrets.TESTDATA_TOKEN }}
 
       # 2. テストデータを取り寄せる (Privateリポジトリなので合鍵を使う)
       - name: Checkout Test Data
         uses: actions/checkout@v4
         with:
-          repository: KureRoboCoder/c-testdata
+          repository: あなたのユーザー名/c-testdata
           token: ${{ secrets.TESTDATA_TOKEN }}
           path: testdata
 
@@ -32,21 +34,35 @@ jobs:
       - name: Compile and Judge (C++)
         id: judge
         run: |
+          echo "=== 📂 提出されたコード一覧 (user_code/answers/) ==="
+          ls -la user_code/answers/ || echo "ディレクトリが見つかりません"
+          
+          echo "=== 📂 テストデータ一覧 (testdata/) ==="
+          ls -la testdata/ || echo "ディレクトリが見つかりません"
+          
           echo "{}" > payload.json
           RESULTS="{}"
           
-          # answersフォルダ内の .cpp ファイルを一つずつ探す
           for src in user_code/answers/*.cpp; do
             [ -e "$src" ] || continue
-            filename=$(basename "$src" .cpp) # Q1A, Q2B などの名前を取得
+            filename=$(basename "$src" .cpp)
             
+            # テストデータの場所を柔軟に探す（_testdata の中にある場合にも対応）
             testdir="testdata/$filename"
             if [ ! -d "$testdir" ]; then
-              continue # テストデータがなければスキップ
+              testdir="testdata/_testdata/$filename"
             fi
+            
+            if [ ! -d "$testdir" ]; then
+              echo "⚠️ [スキップ] $filename : テストデータが見つかりません (探した場所: $testdir)"
+              continue
+            fi
+            
+            echo "▶️ [ジャッジ開始] $filename"
             
             # C++ のコンパイル
             if ! g++ -O2 -Wall "$src" -o /tmp/prog; then
+              echo "❌ [CE] $filename : コンパイルエラー"
               RESULTS=$(jq --arg k "$filename" --arg v "CE" '.[$k] = $v' <<< "$RESULTS")
               continue
             fi
@@ -68,13 +84,15 @@ jobs:
                 continue
               fi
               
-              # AtCoder風のゆるい判定 (空白・改行無視)
               if diff -w "$expected_file" /tmp/actual.out > /dev/null; then
                 pass=$((pass+1))
               fi
             done
             
-            if [ "$total" -eq 0 ]; then continue; fi
+            if [ "$total" -eq 0 ]; then
+              echo "⚠️ [スキップ] $filename : .in ファイルがありません"
+              continue
+            fi
             
             if [ "$pass" -eq "$total" ]; then
               res="AC"
@@ -86,6 +104,7 @@ jobs:
               res="WA"
             fi
             
+            echo "✅ [結果] $filename : $res ($pass / $total)"
             RESULTS=$(jq --arg k "$filename" --arg v "$res" '.[$k] = $v' <<< "$RESULTS")
           done
           
@@ -99,23 +118,24 @@ jobs:
           USER_NAME: ${{ github.event.client_payload.user }}
         with:
           script: |
-            // 最新のモジュラーAPIによる読み込み方に変更
             const { initializeApp, getApps, cert } = require('firebase-admin/app');
             const { getFirestore, FieldValue } = require('firebase-admin/firestore');
             const fs = require('fs');
             
-            // 環境変数から鍵を読み込む
-            const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
+            const results = JSON.parse(fs.readFileSync('payload.json', 'utf8'));
             
-            // 起動チェックの書き方を getApps().length に変更
+            // ★安全装置：テスト結果が空（0件）の場合は、データベースを壊さないように書き込みを中止する
+            if (Object.keys(results).length === 0) {
+              console.error("エラー: 実行されたテストが0件です。ディレクトリ構造を確認してください。");
+              process.exit(1);
+            }
+            
+            const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
             if (getApps().length === 0) {
               initializeApp({ credential: cert(serviceAccount) });
             }
-            
             const db = getFirestore();
-            const results = JSON.parse(fs.readFileSync('payload.json', 'utf8'));
             
-            // Firebaseへ書き込み (FieldValue.serverTimestamp()の書き方も変更)
             await db.collection('users').doc(process.env.USER_NAME).set({
               results: results,
               updatedAt: FieldValue.serverTimestamp()
