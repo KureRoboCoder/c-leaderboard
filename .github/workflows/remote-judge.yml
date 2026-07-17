@@ -34,12 +34,6 @@ jobs:
       - name: Compile and Judge (C++)
         id: judge
         run: |
-          echo "=== 📂 提出されたコード一覧 (user_code/answers/) ==="
-          ls -la user_code/answers/ || echo "ディレクトリが見つかりません"
-          
-          echo "=== 📂 テストデータ一覧 (testdata/) ==="
-          ls -la testdata/ || echo "ディレクトリが見つかりません"
-          
           echo "{}" > payload.json
           RESULTS="{}"
           
