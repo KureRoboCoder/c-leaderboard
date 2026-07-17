@@ -22,7 +22,7 @@ jobs:
       - name: Checkout Test Data
         uses: actions/checkout@v4
         with:
-          repository: あなたのユーザー名/c-testdata
+          repository: KureRoboCoder/c-testdata
           token: ${{ secrets.TESTDATA_TOKEN }}
           path: testdata
 
@@ -45,13 +45,14 @@ jobs:
           
           for src in user_code/answers/*.cpp; do
             [ -e "$src" ] || continue
-            filename=$(basename "$src" .cpp)
+            filename=$(basename "$src" .cpp) # Q1A などを取得
             
-            # テストデータの場所を柔軟に探す（_testdata の中にある場合にも対応）
-            testdir="testdata/$filename"
-            if [ ! -d "$testdir" ]; then
-              testdir="testdata/_testdata/$filename"
-            fi
+            # --- ここが変更点：Q1A を Q1 と A に分割する ---
+            q_sub="${filename: -1}"  # 最後の1文字 (例: A)
+            q_num="${filename%?}"    # 最後の1文字以外 (例: Q1)
+            
+            testdir="testdata/$q_num/$q_sub"
+            # -----------------------------------------------
             
             if [ ! -d "$testdir" ]; then
               echo "⚠️ [スキップ] $filename : テストデータが見つかりません (探した場所: $testdir)"
