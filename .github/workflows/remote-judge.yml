@@ -35,22 +35,23 @@ jobs:
           set -e
 
           # --- User Code を取得 (指定SHAをshallow fetch) ---
+          # トークンはURLに埋め込む方式(x-access-token)を使用。
+          # extraheaderの "bearer" スキームはGitHubのgit smart HTTPで認識されず、
+          # 匿名アクセス扱いとなり非対話環境でユーザー名入力待ちになって失敗するため。
           (
             mkdir -p user_code
             cd user_code
             git init -q
-            git remote add origin "https://github.com/${{ inputs.repo }}"
-            git -c http.extraheader="AUTHORIZATION: bearer ${TESTDATA_TOKEN}" \
-              fetch --depth 1 origin "${{ inputs.sha }}"
+            git remote add origin "https://x-access-token:${TESTDATA_TOKEN}@github.com/${{ inputs.repo }}.git"
+            git fetch --depth 1 origin "${{ inputs.sha }}"
             git checkout -q FETCH_HEAD
           ) &
           PID_USER=$!
 
           # --- Test Data を部分クローン (blob:noneでツリーのみ取得、まだ中身は落ちない) ---
           (
-            git -c http.extraheader="AUTHORIZATION: bearer ${TESTDATA_TOKEN}" \
-              clone --filter=blob:none --no-checkout \
-              "https://github.com/KureRoboCoder/c-testdata" testdata
+            git clone --filter=blob:none --no-checkout \
+              "https://x-access-token:${TESTDATA_TOKEN}@github.com/KureRoboCoder/c-testdata.git" testdata
           ) &
           PID_TEST=$!
 
@@ -152,7 +153,7 @@ jobs:
               res="WA"
             fi
 
-            echo "[結果] $filename : $res ($pass / $total)"
+            echo "✅ [結果] $filename : $res ($pass / $total)"
             RESULTS=$(jq --arg k "$filename" --arg v "$res" '.[$k] = $v' <<< "$RESULTS")
           done
 
