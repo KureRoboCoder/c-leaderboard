@@ -30,20 +30,20 @@
     },
     {
       "id": 3,
-      "title": "repating repeat",
-      "sub": {
-        "A": "dynanamite",
-        "B": "pair is LUCKY",
-        "C": "quite times"
-      }
-    },
-    {
-      "id": 4,
       "title": "IF ELSE ALSO ELSE IF",
       "sub": {
         "A": "Atoha Notonare Yamatonare",
         "B": "ice cream",
         "C": "GROUP 7"
+      }
+    },
+    {
+      "id": 4,
+      "title": "repating repeat",
+      "sub": {
+        "A": "dynanamite",
+        "B": "pair is LUCKY",
+        "C": "quite times"
       }
     },
     {

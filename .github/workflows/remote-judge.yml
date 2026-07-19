@@ -17,68 +17,113 @@ jobs:
   judge:
     runs-on: ubuntu-latest
     steps:
-      # 0. まず自分自身（c-leaderboard）のコードを取り寄せる (scripts/dist/index.js を取得するため)
-      - name: Checkout Current Repo
-        uses: actions/checkout@v4
-        
-      # inputs.xxx という形で受け取るように変更
-      - name: Checkout User Code
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ inputs.repo }}
-          ref: ${{ inputs.sha }}
-          path: user_code
-          token: ${{ secrets.TESTDATA_TOKEN }}
+      # 0. 自リポジトリ全体はcheckoutせず、必要な scripts/dist/index.js のみを直接取得
+      #    (c-leaderboard は Public リポジトリなので認証不要・raw経由で高速取得)
+      - name: Fetch judge script only
+        run: |
+          mkdir -p scripts/dist
+          curl -sL --fail \
+            -o scripts/dist/index.js \
+            "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/scripts/dist/index.js"
 
-      # 2. テストデータを取り寄せる (Privateリポジトリなので合鍵を使う)
-      - name: Checkout Test Data
-        uses: actions/checkout@v4
-        with:
-          repository: KureRoboCoder/c-testdata
-          token: ${{ secrets.TESTDATA_TOKEN }}
-          path: testdata
+      # 1. User Code の取得 と Test Data の「部分クローン(blob:none)」を並列実行
+      #    Test Data 側はこの時点ではツリー構造のみを取得し、ファイル実体(blob)はまだ落とさない
+      - name: Checkout User Code & Test Data (parallel)
+        env:
+          TESTDATA_TOKEN: ${{ secrets.TESTDATA_TOKEN }}
+        run: |
+          set -e
 
-      # 4. コンパイル＆採点
+          # --- User Code を取得 (指定SHAをshallow fetch) ---
+          (
+            mkdir -p user_code
+            cd user_code
+            git init -q
+            git remote add origin "https://github.com/${{ inputs.repo }}"
+            git -c http.extraheader="AUTHORIZATION: bearer ${TESTDATA_TOKEN}" \
+              fetch --depth 1 origin "${{ inputs.sha }}"
+            git checkout -q FETCH_HEAD
+          ) &
+          PID_USER=$!
+
+          # --- Test Data を部分クローン (blob:noneでツリーのみ取得、まだ中身は落ちない) ---
+          (
+            git -c http.extraheader="AUTHORIZATION: bearer ${TESTDATA_TOKEN}" \
+              clone --filter=blob:none --no-checkout \
+              "https://github.com/KureRoboCoder/c-testdata" testdata
+          ) &
+          PID_TEST=$!
+
+          # 両方の完了を待ち、どちらかが失敗したらジョブを失敗させる
+          wait "$PID_USER"
+          wait "$PID_TEST"
+
+      # 2. User Code の内容が揃ったので、必要な問題フォルダだけをTest Dataからsparse-checkout
+      #    (例: Q1A.cpp, Q2B.cpp が提出されていれば Q1/A と Q2/B のみ実データを取得)
+      - name: Sparse-checkout only required test data directories
+        run: |
+          set -e
+          cd testdata
+          git sparse-checkout init --cone
+
+          dirs=()
+          for src in ../user_code/answers/*.cpp; do
+            [ -e "$src" ] || continue
+            filename=$(basename "$src" .cpp)
+            q_sub="${filename: -1}"
+            q_num="${filename%?}"
+            dirs+=("$q_num/$q_sub")
+          done
+
+          if [ "${#dirs[@]}" -eq 0 ]; then
+            echo "⚠️ 提出されたcppファイルが見つかりません"
+          else
+            echo "取得対象: ${dirs[*]}"
+            git sparse-checkout set "${dirs[@]}"
+          fi
+
+          # sparse-checkoutパターン確定後、必要なblobのみ実際に取得してWorking Treeに展開
+          git checkout -q
+
+      # 3. コンパイル＆採点 (ロジックは変更なし)
       - name: Compile and Judge (C++)
         id: judge
         run: |
           echo "{}" > payload.json
           RESULTS="{}"
-          
+
           for src in user_code/answers/*.cpp; do
             [ -e "$src" ] || continue
             filename=$(basename "$src" .cpp) # Q1A などを取得
-            
-            # --- ここが変更点：Q1A を Q1 と A に分割する ---
+
             q_sub="${filename: -1}"  # 最後の1文字 (例: A)
             q_num="${filename%?}"    # 最後の1文字以外 (例: Q1)
-            
+
             testdir="testdata/$q_num/$q_sub"
-            # -----------------------------------------------
-            
+
             if [ ! -d "$testdir" ]; then
               echo "⚠️ [スキップ] $filename : テストデータが見つかりません (探した場所: $testdir)"
               continue
             fi
-            
+
             echo "▶️ [ジャッジ開始] $filename"
-            
+
             # C++ のコンパイル
             if ! g++ -O2 -Wall "$src" -o /tmp/prog; then
               echo "❌ [CE] $filename : コンパイルエラー"
               RESULTS=$(jq --arg k "$filename" --arg v "CE" '.[$k] = $v' <<< "$RESULTS")
               continue
             fi
-            
+
             pass=0; total=0; tle=0; re=0
             for infile in "$testdir"/*.in; do
               [ -e "$infile" ] || continue
               total=$((total+1))
               expected_file="${infile%.in}.out"
-              
+
               status=0
               timeout 3 /tmp/prog < "$infile" > /tmp/actual.out || status=$?
-              
+
               if [ "$status" -eq 124 ]; then
                 tle=$((tle+1))
                 continue
@@ -86,17 +131,17 @@ jobs:
                 re=$((re+1))
                 continue
               fi
-              
+
               if diff -w "$expected_file" /tmp/actual.out > /dev/null; then
                 pass=$((pass+1))
               fi
             done
-            
+
             if [ "$total" -eq 0 ]; then
               echo "⚠️ [スキップ] $filename : .in ファイルがありません"
               continue
             fi
-            
+
             if [ "$pass" -eq "$total" ]; then
               res="AC"
             elif [ "$tle" -gt 0 ]; then
@@ -106,14 +151,14 @@ jobs:
             else
               res="WA"
             fi
-            
-            echo "✅ [結果] $filename : $res ($pass / $total)"
+
+            echo "[結果] $filename : $res ($pass / $total)"
             RESULTS=$(jq --arg k "$filename" --arg v "$res" '.[$k] = $v' <<< "$RESULTS")
           done
-          
+
           echo "$RESULTS" > payload.json
 
-      # 最後のFirebase送信部分も inputs.user に変更
+      # 4. Firebaseへ結果送信 (変更なし)
       - name: Update Firebase
         env:
           FIREBASE_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
