@@ -17,14 +17,26 @@ jobs:
   judge:
     runs-on: ubuntu-latest
     steps:
-      # 0. 自リポジトリ全体はcheckoutせず、必要な scripts/dist/index.js のみを直接取得
-      #    (c-leaderboard は Public リポジトリなので認証不要・raw経由で高速取得)
-      - name: Fetch judge script only
+      # 0. 自リポジトリ全体はcheckoutせず、必要な scripts/dist/ 配下のみを取得
+      #    (c-leaderboard は Public リポジトリなので認証不要)
+      #
+      #    注意: index.js 単体だけを取得する方式は使わないこと。
+      #    @vercel/ncc は動的requireを検出すると `701.index.js` のような
+      #    チャンクファイルに分割して出力することがあり、index.js単体では
+      #    実行時に "Cannot find module './701.index.js'" のようなエラーになる。
+      #    そのため scripts/dist/ ディレクトリ全体を1つの成果物として扱う必要がある。
+      #
+      #    tarball(.git履歴を含まない単発ダウンロード)を取得して該当ディレクトリのみ
+      #    展開することで、git cloneより軽量なまま確実に全ファイルを取得する。
+      - name: Fetch judge script directory (scripts/dist)
         run: |
+          set -e
           mkdir -p scripts/dist
           curl -sL --fail \
-            -o scripts/dist/index.js \
-            "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/scripts/dist/index.js"
+            "https://codeload.github.com/${{ github.repository }}/tar.gz/${{ github.sha }}" \
+            -o repo.tar.gz
+          tar -xzf repo.tar.gz --wildcards --strip-components=1 '*/scripts/dist/*'
+          rm repo.tar.gz
 
       # 1. User Code の取得 と Test Data の「部分クローン(blob:none)」を並列実行
       #    Test Data 側はこの時点ではツリー構造のみを取得し、ファイル実体(blob)はまだ落とさない
